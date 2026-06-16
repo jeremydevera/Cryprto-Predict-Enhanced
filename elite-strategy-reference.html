@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Elite Context Breakout — Strategy Reference</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 11px;
+      color: #1a1a2e;
+      background: #fff;
+      padding: 32px 40px;
+      max-width: 900px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+
+    /* ── Header ── */
+    .header {
+      border-bottom: 3px solid #1a1a2e;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #1a1a2e;
+    }
+    .header .sub {
+      font-size: 10px;
+      color: #555;
+      margin-top: 3px;
+    }
+    .badge {
+      display: inline-block;
+      background: #1a1a2e;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 2px 8px;
+      border-radius: 3px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    /* ── Sections ── */
+    .section { margin-bottom: 18px; }
+    .section-title {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #1a1a2e;
+      border-left: 3px solid #4f46e5;
+      padding-left: 8px;
+      margin-bottom: 8px;
+    }
+
+    /* ── Tables ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 4px;
+    }
+    th {
+      background: #1a1a2e;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      padding: 5px 8px;
+      text-align: left;
+    }
+    td {
+      padding: 4px 8px;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 10.5px;
+      vertical-align: top;
+    }
+    tr:nth-child(even) td { background: #f8f8fc; }
+    tr:last-child td { border-bottom: none; }
+
+    .tag-a    { background: #d1fae5; color: #065f46; font-weight: 700; padding: 1px 5px; border-radius: 3px; font-size: 9px; }
+    .tag-b    { background: #fef3c7; color: #92400e; font-weight: 700; padding: 1px 5px; border-radius: 3px; font-size: 9px; }
+    .tag-new  { background: #ede9fe; color: #4c1d95; font-weight: 700; padding: 1px 5px; border-radius: 3px; font-size: 9px; }
+    .tag-on   { background: #d1fae5; color: #065f46; font-weight: 700; padding: 1px 5px; border-radius: 3px; font-size: 9px; }
+    .tag-off  { background: #f1f5f9; color: #475569; font-weight: 700; padding: 1px 5px; border-radius: 3px; font-size: 9px; }
+    .tag-block{ background: #fee2e2; color: #991b1b; font-weight: 700; padding: 1px 5px; border-radius: 3px; font-size: 9px; }
+
+    /* ── Two-column grid ── */
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    /* ── Numbered list ── */
+    ol.gates { padding-left: 16px; }
+    ol.gates li {
+      font-size: 10.5px;
+      padding: 2px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    ol.gates li:last-child { border-bottom: none; }
+    ol.gates li strong { color: #1a1a2e; }
+
+    /* ── Info box ── */
+    .infobox {
+      background: #f0f4ff;
+      border: 1px solid #c7d2fe;
+      border-radius: 5px;
+      padding: 10px 14px;
+      font-size: 10.5px;
+      color: #312e81;
+    }
+    .infobox strong { font-weight: 700; }
+
+    /* ── Regime bands ── */
+    .low    { color: #6b7280; font-weight: 600; }
+    .medium { color: #b45309; font-weight: 600; }
+    .high   { color: #be123c; font-weight: 600; }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 24px;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 10px;
+      font-size: 9px;
+      color: #9ca3af;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* ── Print ── */
+    @media print {
+      body { padding: 20px 28px; }
+      @page { margin: 15mm 12mm; size: A4; }
+      .no-break { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Elite Context Breakout <span class="badge">Strategy Reference</span></h1>
+    <div class="sub">CryptoPredict Terminal &nbsp;·&nbsp; Generated 2026-04-25 &nbsp;·&nbsp; Open in Chrome → Ctrl+P → Save as PDF</div>
+  </div>
+
+  <!-- ── 1. Overview ── -->
+  <div class="section no-break">
+    <div class="section-title">Overview</div>
+    <div class="infobox">
+      <strong>Concept:</strong> Identifies a swing high/low preceded by tight consolidation, waits for a high-quality breakout candle with volume surge and strong close, then optionally a retest of the broken level, and enters in the direction of the break. Every signal must align with the higher timeframe trend structure.
+    </div>
+  </div>
+
+  <!-- ── 2. Vol Regime ── -->
+  <div class="section no-break">
+    <div class="section-title">Volatility Regime (ATR%)</div>
+    <table>
+      <tr><th>Regime</th><th>ATR% of Price</th><th>Effect</th></tr>
+      <tr><td><span class="low">LOW</span></td><td>&lt; 0.4%</td><td><span class="tag-block">BLOCKED</span> — no signals fire in choppy/flat markets</td></tr>
+      <tr><td><span class="medium">MEDIUM</span></td><td>0.4% – 1.2%</td><td>Tighter body/vol thresholds, tighter consolidation, tighter freshness</td></tr>
+      <tr><td><span class="high">HIGH</span></td><td>&gt; 1.2%</td><td>Relaxed body threshold (70%), tighter SL multiplier (1.2×), higher TP (2.5×)</td></tr>
+    </table>
+  </div>
+
+  <div class="grid2">
+
+    <!-- ── 3. HTF Structure ── -->
+    <div class="section no-break">
+      <div class="section-title">HTF Timeframe Mapping</div>
+      <table>
+        <tr><th>Chart TF</th><th>HTF Used</th></tr>
+        <tr><td>1m</td><td>15m</td></tr>
+        <tr><td>5m / 15m</td><td>1h</td></tr>
+        <tr><td>1h</td><td>4h</td></tr>
+        <tr><td>4h</td><td>1d</td></tr>
+      </table>
+      <div style="margin-top:8px;">
+        <table>
+          <tr><th>Condition</th><th>Rule</th></tr>
+          <tr><td>HTF Bull Structure</td><td>Last 2 HTF swing highs ascending (HH) <em>and</em> last 2 swing lows ascending (HL)</td></tr>
+          <tr><td>HTF Bear Structure</td><td>Last 2 HTF swing highs descending (LH) <em>and</em> last 2 swing lows descending (LL)</td></tr>
+          <tr><td>HTF EMA50 (built-in)</td><td>B-grade must have HTF price on correct side of HTF EMA50</td></tr>
+          <tr><td>HTF EMA50 (filter)</td><td>Toggle to require for ALL grades</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── 4. Swing Detection ── -->
+    <div class="section no-break">
+      <div class="section-title">Swing Level Detection</div>
+      <table>
+        <tr><th>Parameter</th><th>Value</th></tr>
+        <tr><td>Lookback window</td><td>60 bars</td></tr>
+        <tr><td>Confirmation bars</td><td>2 on each side (neighbors must be lower/higher)</td></tr>
+        <tr><td>Extension required (medium)</td><td>Close &gt; swing × 1.003 (0.3%)</td></tr>
+        <tr><td>Extension required (others)</td><td>Close &gt; swing × 1.005 (0.5%)</td></tr>
+        <tr><td>Break search window</td><td>Last 20 bars after swing</td></tr>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- ── 5. Consolidation ── -->
+  <div class="section no-break">
+    <div class="section-title">Consolidation Check (8 bars before swing)</div>
+    <table>
+      <tr><th>Check</th><th>Rule</th><th>Note</th></tr>
+      <tr>
+        <td>Range gate</td>
+        <td>Total H-L of 8 bars &lt; ATR × 8 × 0.8 (medium) or × 1.0 (others)</td>
+        <td>Ensures the zone is tight as a whole</td>
+      </tr>
+      <tr>
+        <td>Duration gate <span class="tag-new">NEW</span></td>
+        <td>At least <strong>5 of 8</strong> bars must individually have range ≤ 0.8× ATR</td>
+        <td>Ensures the tightness was sustained, not a 2-bar squeeze</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ── 6. Breakout Candle ── -->
+  <div class="section no-break">
+    <div class="section-title">Breakout Candle Requirements (all must pass)</div>
+    <table>
+      <tr><th>Check</th><th>Rule</th></tr>
+      <tr><td>Direction</td><td>Bull = bullish candle (close &gt; open) &nbsp;·&nbsp; Bear = bearish candle (close &lt; open)</td></tr>
+      <tr><td>Max range</td><td>≤ 4× ATR — rejects news spikes</td></tr>
+      <tr><td>Close position <span class="tag-new">NEW</span></td><td>Bull: close in <strong>top 25%</strong> of candle range &nbsp;·&nbsp; Bear: close in <strong>bottom 25%</strong></td></tr>
+      <tr><td>Volume acceleration <span class="tag-new">NEW</span></td><td>Break candle volume &gt; average of the <strong>3 candles immediately before it</strong></td></tr>
+      <tr><td>Volume vs 20-bar avg</td><td>A-grade: ≥ 2.5× avg &nbsp;·&nbsp; B-grade medium: ≥ 2.0× &nbsp;·&nbsp; B-grade others: ≥ 1.5×</td></tr>
+      <tr><td>Freshness</td><td>Breakout within <strong>4 bars</strong> (medium) or <strong>6 bars</strong> (others) of current bar</td></tr>
+    </table>
+  </div>
+
+  <!-- ── 7. Grade ── -->
+  <div class="section no-break">
+    <div class="section-title">Break Grade System</div>
+    <table>
+      <tr><th>Grade</th><th>Body %</th><th>Volume</th><th>Extra</th></tr>
+      <tr>
+        <td><span class="tag-a">A-GRADE</span></td>
+        <td>≥ 65% of candle range &nbsp;(≥ 70% for HIGH vol)</td>
+        <td>≥ 2.5× 20-bar average</td>
+        <td>ultraTight consolidation required (range &lt; ATR×8×0.8)</td>
+      </tr>
+      <tr>
+        <td><span class="tag-b">B-GRADE</span></td>
+        <td>≥ 45% &nbsp;(≥ 55% for MEDIUM vol)</td>
+        <td>≥ 1.5× avg &nbsp;(≥ 2.0× medium)</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td><span class="tag-block">INVALID</span></td>
+        <td colspan="3">Fails either threshold → grade = 0 → signal blocked</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ── 8. Retest ── -->
+  <div class="section no-break">
+    <div class="section-title">Retest Detection</div>
+    <table>
+      <tr><th>Condition</th><th>Rule</th></tr>
+      <tr><td>Proximity</td><td>Wick touches within 0 – 0.3× ATR of the swing level after the breakout</td></tr>
+      <tr><td>Hold</td><td>Candle closes back above (bull) / below (bear) the swing level</td></tr>
+      <tr><td>EMA20 alignment</td><td>Retest wick within 0.3% of EMA20 — level and EMA20 must agree</td></tr>
+      <tr><td>Volume</td><td>Retest volume ≤ 70% of breakout candle volume (diminishing selling/buying pressure)</td></tr>
+    </table>
+  </div>
+
+  <!-- ── 9. Hard Gates ── -->
+  <div class="section no-break">
+    <div class="section-title">Always-On Hard Gates (not toggleable)</div>
+    <ol class="gates">
+      <li><strong>LOW vol regime</strong> — no signal fires regardless of setup quality</li>
+      <li><strong>Price position</strong> — must be above swing (buy) or below swing (sell); price must have broken out</li>
+      <li><strong>Fresh or retested</strong> — stale unretested breaks blocked (break must be ≤ freshness limit bars old, or retest must have occurred)</li>
+      <li><strong>Liquidity pool</strong> — MEDIUM vol A-grade only: cluster of prior swing highs/lows within 0.2% of the swing level must exist</li>
+      <li><strong>HTF Structure</strong> — HH+HL for bull, LH+LL for bear; derived from HTF candles</li>
+      <li><strong>Consolidation range</strong> — 8-bar range must be within ATR threshold</li>
+      <li><strong>Consolidation duration</strong> — at least 5 of 8 bars individually tight (≤ 0.8× ATR each)</li>
+      <li><strong>Grade ≥ 1</strong> — invalid grade (0) always blocked</li>
+      <li><strong>B-grade + HTF EMA50 disagrees</strong> — B-grade counter-EMA setups blocked</li>
+      <li><strong>B-grade + no retest</strong> — B-grade fresh entries blocked; must wait for retest</li>
+      <li><strong>Retest EMA20 alignment</strong> — if retest occurred, wick must be within 0.3% of EMA20</li>
+      <li><strong>RSI gate</strong> — MEDIUM A-grade: ≥55/≤45 · MEDIUM B-grade: ≥52/≤48 · others: ≥50/≤50</li>
+    </ol>
+  </div>
+
+  <!-- ── 10. Filter Toggles ── -->
+  <div class="section no-break">
+    <div class="section-title">Filter Toggles (Filters Tab)</div>
+    <table>
+      <tr><th>Filter</th><th>Default</th><th>What It Does</th></tr>
+      <tr>
+        <td>Elite Session Filter</td>
+        <td><span class="tag-on">ON</span></td>
+        <td>London 08:00–11:00 UTC and NY 13:00–17:00 UTC only</td>
+      </tr>
+      <tr>
+        <td>Require Order Block</td>
+        <td><span class="tag-on">ON</span></td>
+        <td>Institutional order block must exist behind the swing level</td>
+      </tr>
+      <tr>
+        <td>Require FVG</td>
+        <td><span class="tag-on">ON</span></td>
+        <td>Unmitigated fair value gap must exist in the trade direction</td>
+      </tr>
+      <tr>
+        <td>Liquidity Sweep</td>
+        <td><span class="tag-on">ON</span></td>
+        <td>A stop hunt (sweep + recovery) must have occurred within last 20 bars</td>
+      </tr>
+      <tr>
+        <td>Elite: Require HTF EMA200</td>
+        <td><span class="tag-on">ON</span></td>
+        <td>HTF price must be above (bull) / below (bear) HTF EMA200 for ALL grades including A</td>
+      </tr>
+      <tr>
+        <td>Elite: Require Retest (All Grades)</td>
+        <td><span class="tag-on">ON</span></td>
+        <td>Even A-grade fresh breakouts are blocked until a valid retest occurs</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ── 11. Entry / SL / TP ── -->
+  <div class="section no-break">
+    <div class="section-title">Entry / Stop Loss / Take Profit</div>
+    <table>
+      <tr><th></th><th>A-grade HIGH vol</th><th>A-grade others</th><th>B-grade MEDIUM</th><th>B-grade others</th></tr>
+      <tr><td><strong>SL mult</strong></td><td>1.2× ATR</td><td>1.0× ATR</td><td>1.5× ATR</td><td>1.5× ATR</td></tr>
+      <tr><td><strong>TP1 mult</strong></td><td>2.5× risk</td><td>2.0× risk</td><td>2.0× risk</td><td>1.5× risk</td></tr>
+      <tr><td><strong>Min RR</strong></td><td>2.0</td><td>2.0</td><td>2.0</td><td>1.5</td></tr>
+    </table>
+    <div style="margin-top:8px;">
+      <table>
+        <tr><th>Level</th><th>Formula</th></tr>
+        <tr><td><strong>Entry</strong></td><td>Current price at breakout candle close</td></tr>
+        <tr><td><strong>SL</strong></td><td>Swing level ± SL_mult × ATR (below swing for bull, above for bear)</td></tr>
+        <tr><td><strong>TP1</strong></td><td>Entry ± risk × TP1_mult</td></tr>
+        <tr><td><strong>TP2</strong></td><td>Entry ± max(consolidation range, risk × (minRR + 2))</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── 12. Signal Quality ── -->
+  <div class="section no-break">
+    <div class="section-title">Signal Quality Confluence Signals</div>
+    <table>
+      <tr><th>Signal</th><th>Direction</th><th>Quality Pts</th></tr>
+      <tr><td>HTF Structure (HH+HL / LH+LL)</td><td>Buy / Sell</td><td>4</td></tr>
+      <tr><td>Tight Consolidation</td><td>Buy / Sell</td><td>4</td></tr>
+      <tr><td>Retest occurred</td><td>Buy / Sell</td><td>4</td></tr>
+      <tr><td>EMA20 &gt; EMA50 (trend)</td><td>Buy</td><td>4</td></tr>
+      <tr><td>EMA20 &lt; EMA50 (trend)</td><td>Sell</td><td>4</td></tr>
+      <tr><td>MACD histogram positive</td><td>Buy</td><td>4</td></tr>
+      <tr><td>MACD histogram negative</td><td>Sell</td><td>4</td></tr>
+      <tr><td>RSI 45–70</td><td>Buy</td><td>4</td></tr>
+      <tr><td>RSI 30–55</td><td>Sell</td><td>4</td></tr>
+      <tr><td>Price &gt; EMA200</td><td>Buy</td><td>4</td></tr>
+      <tr><td>Price &lt; EMA200</td><td>Sell</td><td>4</td></tr>
+    </table>
+  </div>
+
+  <div class="footer">
+    <span>Elite Context Breakout — CryptoPredict Terminal</span>
+    <span>Generated 2026-04-25 &nbsp;·&nbsp; For internal use only</span>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Current Filter Setup — v3 Review</title>
+<style>
+  body {
+    margin: 0;
+    background: #131722;
+    color: #d1d4dc;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: 20px;
+  }
+  h1 { color: #f7f8fa; font-size: 18px; margin: 0 0 4px 0; }
+  h2 { color: #f7f8fa; font-size: 15px; margin: 24px 0 12px 0; }
+  .subtitle { color: #787b86; font-size: 12px; margin-bottom: 16px; }
+  .chart-wrap {
+    background: #131722;
+    border: 1px solid #2a2e39;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 11px; color: #b2b5be; margin-bottom: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+  .legend-line { width: 16px; height: 2px; }
+  svg { display: block; width: 100%; max-width: 1400px; }
+
+  .axis-text { fill: #787b86; font-size: 10px; font-family: monospace; }
+  .label-text { fill: #d1d4dc; font-size: 11px; font-family: monospace; }
+  .label-text-bold { fill: #f7f8fa; font-size: 12px; font-weight: 600; font-family: monospace; }
+  .callout-bg { fill: #1e2230; stroke: #f5a623; stroke-width: 1.5; }
+  .callout-text { fill: #f5a623; font-size: 10px; font-weight: 600; font-family: monospace; }
+  .callout-text-green { fill: #26a69a; font-size: 10px; font-weight: 600; font-family: monospace; }
+  .callout-text-red { fill: #ef5350; font-size: 10px; font-weight: 600; font-family: monospace; }
+  .callout-text-orange { fill: #f5a623; font-size: 10px; font-weight: 600; font-family: monospace; }
+  .grid line { stroke: #2a2e39; stroke-width: 0.5; }
+
+  .config-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .config-card {
+    background: #1c2030;
+    border: 1px solid #2a2e39;
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 11px;
+    font-family: monospace;
+  }
+  .config-card.good { border-left: 3px solid #26a69a; }
+  .config-card.bad { border-left: 3px solid #ef5350; }
+  .config-card.neutral { border-left: 3px solid #787b86; }
+  .config-card.warning { border-left: 3px solid #f5a623; }
+  .config-card h4 { margin: 0 0 6px 0; font-size: 12px; font-family: -apple-system, sans-serif; }
+  .config-card.good h4 { color: #26a69a; }
+  .config-card.bad h4 { color: #ef5350; }
+  .config-card.warning h4 { color: #f5a623; }
+  .config-card.neutral h4 { color: #b2b5be; }
+  .config-card .delta { color: #787b86; font-size: 10px; margin-top: 4px; }
+  .config-card .delta strong { color: #d1d4dc; }
+  .config-card .verdict {
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid #2a2e39;
+    font-size: 10px; color: #b2b5be; font-family: -apple-system, sans-serif;
+  }
+
+  .compare-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .compare-card {
+    background: #1c2030; border: 1px solid #2a2e39; border-radius: 6px;
+    padding: 12px;
+  }
+  .compare-card h3 { margin: 0 0 8px 0; font-size: 12px; }
+  .v1 h3 { color: #ef5350; }
+  .v2 h3 { color: #b388ff; }
+  .v3 h3 { color: #f5a623; }
+  .ideal h3 { color: #26a69a; }
+  .compare-card table { width: 100%; font-size: 10px; font-family: monospace; }
+  .compare-card td { padding: 3px 4px; border-bottom: 1px solid #2a2e39; }
+  .compare-card td:first-child { color: #787b86; }
+  .compare-card td:last-child { text-align: right; color: #d1d4dc; }
+
+  .recommend {
+    background: #1c2030; border: 1px solid #f5a623; border-left: 4px solid #f5a623;
+    border-radius: 6px; padding: 16px; margin-top: 20px;
+  }
+  .recommend h3 { color: #f5a623; margin: 0 0 12px 0; font-size: 14px; }
+  .recommend ul { margin: 0; padding-left: 20px; font-size: 12px; line-height: 1.7; }
+</style>
+</head>
+<body>
+
+<h1>Current Setup v3 — Filter Chain Review</h1>
+<div class="subtitle">What changed since v2, and where the entry now lands on the HANAUSDT-style move</div>
+
+<h2>1. What changed in this revision</h2>
+
+<div class="config-grid">
+  <div class="config-card good">
+    <h4>✓ ATR Mult lowered</h4>
+    <div>ATR Mult: <strong>5.5 → 4.5</strong></div>
+    <div class="delta">Step in the right direction</div>
+    <div class="verdict">Supertrend flips ~1 bar earlier than before. Still not at the optimal 3.0, but moving the right way.</div>
+  </div>
+
+  <div class="config-card good">
+    <h4>✓ HTF Slope loosened</h4>
+    <div>Slope LB: 4 → <strong>3</strong></div>
+    <div>Min Slope: 0.03 → <strong>0.02 %/bar</strong></div>
+    <div class="delta">Earlier slope confirmation</div>
+    <div class="verdict">Removes ~0.5–1 bar of lag from the slope filter. Small but useful.</div>
+  </div>
+
+  <div class="config-card bad">
+    <h4>✗ KDE VA tightened AGAIN</h4>
+    <div>LB: 80 → <strong>60</strong></div>
+    <div>BW: 0.3 → <strong>0.2</strong></div>
+    <div>Max Density: 0.3 → <strong>0.2</strong></div>
+    <div class="delta">Even stricter location requirement</div>
+    <div class="verdict" style="color:#ef5350">Wrong direction. Max Density 0.2 = price must be in the bottom 20% of value-area density. This eats most of the ATR Mult + HTF Slope gains.</div>
+  </div>
+</div>
+
+<div class="config-grid">
+  <div class="config-card warning">
+    <h4>⚠ DI Period slowed</h4>
+    <div>DI Period: <strong>16 → 25</strong></div>
+    <div class="delta">Slower direction confirmation</div>
+    <div class="verdict">25-bar DI is sluggish on 15m. DI− takes longer to cross above DI+, adding ~1–2 bars of direction-confirmation lag.</div>
+  </div>
+
+  <div class="config-card neutral">
+    <h4>Unchanged: rVol 2.9</h4>
+    <div>Still climax-volume only</div>
+    <div class="verdict">Drop to 1.8–2.0 for momentum start, not climax.</div>
+  </div>
+
+  <div class="config-card neutral">
+    <h4>Unchanged: Impulse ON</h4>
+    <div>Still requires 60% body candle</div>
+    <div class="verdict">Disable — this is the largest remaining lag source.</div>
+  </div>
+</div>
+
+<h2>2. Net effect on entry timing</h2>
+
+<div class="chart-wrap">
+  <div class="legend">
+    <div class="legend-item"><div class="legend-line" style="background:#a674e6"></div>EMA200</div>
+    <div class="legend-item"><div class="legend-line" style="background:#26a69a"></div>Supertrend Bull</div>
+    <div class="legend-item"><div class="legend-line" style="background:#ef5350"></div>Supertrend Bear</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ef5350"></div>v1 Strict — bar 25</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#b388ff"></div>v2 — bar 22</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>v3 CURRENT — bar 22-23</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#26a69a"></div>Recommended — bar 17</div>
+  </div>
+
+  <svg viewBox="0 0 1400 480" preserveAspectRatio="xMidYMid meet">
+
+    <defs>
+      <pattern id="grid3" width="40" height="20" patternUnits="userSpaceOnUse">
+        <path d="M 40 0 L 0 0 0 20" fill="none" stroke="#1f2330" stroke-width="0.5"/>
+      </pattern>
+    </defs>
+    <rect x="50" y="20" width="1280" height="420" fill="url(#grid3)" />
+
+    <text x="1340" y="35" class="axis-text">0.04200</text>
+    <text x="1340" y="95" class="axis-text">0.04100</text>
+    <text x="1340" y="155" class="axis-text">0.04000</text>
+    <text x="1340" y="215" class="axis-text">0.03950</text>
+    <text x="1340" y="275" class="axis-text">0.03900</text>
+    <text x="1340" y="335" class="axis-text">0.03850</text>
+    <text x="1340" y="395" class="axis-text">0.03800</text>
+    <text x="1340" y="435" class="axis-text">0.03750</text>
+
+    <g class="grid">
+      <line x1="50" y1="30" x2="1330" y2="30"/>
+      <line x1="50" y1="90" x2="1330" y2="90"/>
+      <line x1="50" y1="150" x2="1330" y2="150"/>
+      <line x1="50" y1="210" x2="1330" y2="210"/>
+      <line x1="50" y1="270" x2="1330" y2="270"/>
+      <line x1="50" y1="330" x2="1330" y2="330"/>
+      <line x1="50" y1="390" x2="1330" y2="390"/>
+    </g>
+
+    <!-- EMA200 -->
+    <polyline points="
+      60,55 100,55 140,55 180,57 220,60 260,63 300,67 340,71 380,76 420,82
+      460,90 500,98 540,108 580,118 620,128 660,138 700,148 740,157 780,166 820,174
+      860,180 900,185 940,189 980,192 1020,194 1060,196 1100,197 1140,198 1180,199 1220,200 1260,201 1300,202
+    " fill="none" stroke="#a674e6" stroke-width="2"/>
+    <text x="65" y="48" class="label-text" fill="#a674e6">EMA 200</text>
+
+    <!-- Supertrend bull -->
+    <polyline points="60,180 100,182 140,184 180,186 220,188 260,190 300,191 340,192 380,193 420,194 460,195 500,196 540,197 580,198 620,199 660,200" fill="none" stroke="#26a69a" stroke-width="1.5" stroke-dasharray="3,2"/>
+    <!-- v3 Supertrend bear flips at bar 15 instead of 16 (ATR Mult 4.5 vs 5.5) -->
+    <polyline points="620,90 660,92 700,94 740,98 780,104 820,112 860,122 900,133 940,145 980,158 1020,172 1060,186 1100,200 1140,212 1180,222 1220,230 1260,237 1300,242" fill="none" stroke="#ef5350" stroke-width="1.5" stroke-dasharray="3,2"/>
+    <text x="610" y="208" class="label-text" fill="#26a69a" font-size="9">ST Bull</text>
+    <text x="660" y="88" class="label-text" fill="#ef5350" font-size="9">ST Bear (Mult 4.5 → 1 bar earlier flip)</text>
+
+    <!-- Candles -->
+    <g id="candles">
+      <line x1="60"  y1="105" x2="60"  y2="125" stroke="#787b86"/><rect x="54"  y="110" width="12" height="10" fill="#26a69a"/>
+      <line x1="100" y1="100" x2="100" y2="128" stroke="#787b86"/><rect x="94"  y="115" width="12" height="8"  fill="#ef5350"/>
+      <line x1="140" y1="95"  x2="140" y2="120" stroke="#787b86"/><rect x="134" y="100" width="12" height="12" fill="#26a69a"/>
+      <line x1="180" y1="92"  x2="180" y2="115" stroke="#787b86"/><rect x="174" y="98"  width="12" height="11" fill="#26a69a"/>
+      <line x1="220" y1="95"  x2="220" y2="125" stroke="#787b86"/><rect x="214" y="100" width="12" height="20" fill="#ef5350"/>
+      <line x1="260" y1="118" x2="260" y2="140" stroke="#787b86"/><rect x="254" y="122" width="12" height="14" fill="#26a69a"/>
+      <line x1="300" y1="120" x2="300" y2="142" stroke="#787b86"/><rect x="294" y="125" width="12" height="13" fill="#26a69a"/>
+      <line x1="340" y1="115" x2="340" y2="145" stroke="#787b86"/><rect x="334" y="120" width="12" height="20" fill="#ef5350"/>
+      <line x1="380" y1="125" x2="380" y2="150" stroke="#787b86"/><rect x="374" y="130" width="12" height="15" fill="#26a69a"/>
+      <line x1="420" y1="130" x2="420" y2="155" stroke="#787b86"/><rect x="414" y="135" width="12" height="15" fill="#ef5350"/>
+      <line x1="460" y1="135" x2="460" y2="158" stroke="#787b86"/><rect x="454" y="140" width="12" height="14" fill="#26a69a"/>
+      <line x1="500" y1="138" x2="500" y2="165" stroke="#787b86"/><rect x="494" y="142" width="12" height="20" fill="#ef5350"/>
+      <line x1="540" y1="145" x2="540" y2="172" stroke="#787b86"/><rect x="534" y="150" width="12" height="20" fill="#ef5350"/>
+      <line x1="580" y1="158" x2="580" y2="180" stroke="#787b86"/><rect x="574" y="162" width="12" height="16" fill="#ef5350"/>
+      <line x1="620" y1="170" x2="620" y2="195" stroke="#787b86"/><rect x="614" y="175" width="12" height="18" fill="#ef5350"/>
+      <line x1="660" y1="180" x2="660" y2="215" stroke="#787b86"/><rect x="654" y="185" width="12" height="28" fill="#ef5350"/>
+      <line x1="700" y1="190" x2="700" y2="225" stroke="#787b86"/><rect x="694" y="195" width="12" height="28" fill="#ef5350"/>
+      <line x1="740" y1="205" x2="740" y2="240" stroke="#787b86"/><rect x="734" y="210" width="12" height="28" fill="#ef5350"/>
+      <line x1="780" y1="220" x2="780" y2="255" stroke="#787b86"/><rect x="774" y="225" width="12" height="28" fill="#ef5350"/>
+      <line x1="820" y1="230" x2="820" y2="285" stroke="#787b86"/><rect x="813" y="240" width="14" height="42" fill="#ef5350"/>
+      <line x1="860" y1="265" x2="860" y2="305" stroke="#787b86"/><rect x="854" y="272" width="12" height="30" fill="#ef5350"/>
+      <line x1="900" y1="285" x2="900" y2="320" stroke="#787b86"/><rect x="894" y="292" width="12" height="25" fill="#ef5350"/>
+      <line x1="940" y1="295" x2="940" y2="325" stroke="#787b86"/><rect x="934" y="300" width="12" height="22" fill="#ef5350"/>
+      <line x1="980" y1="298" x2="980" y2="325" stroke="#787b86"/><rect x="974" y="302" width="12" height="20" fill="#ef5350"/>
+      <line x1="1020" y1="300" x2="1020" y2="328" stroke="#787b86"/><rect x="1014" y="304" width="12" height="22" fill="#ef5350"/>
+      <line x1="1060" y1="318" x2="1060" y2="345" stroke="#787b86"/><rect x="1054" y="322" width="12" height="20" fill="#ef5350"/>
+      <line x1="1100" y1="335" x2="1100" y2="360" stroke="#787b86"/><rect x="1094" y="340" width="12" height="18" fill="#ef5350"/>
+      <line x1="1140" y1="345" x2="1140" y2="370" stroke="#787b86"/><rect x="1134" y="350" width="12" height="16" fill="#ef5350"/>
+      <line x1="1180" y1="355" x2="1180" y2="378" stroke="#787b86"/><rect x="1174" y="358" width="12" height="16" fill="#26a69a"/>
+      <line x1="1220" y1="358" x2="1220" y2="380" stroke="#787b86"/><rect x="1214" y="362" width="12" height="14" fill="#ef5350"/>
+      <line x1="1260" y1="360" x2="1260" y2="383" stroke="#787b86"/><rect x="1254" y="364" width="12" height="14" fill="#26a69a"/>
+      <line x1="1300" y1="362" x2="1300" y2="382" stroke="#787b86"/><rect x="1294" y="366" width="12" height="12" fill="#ef5350"/>
+    </g>
+
+    <!-- v3 filter callouts: showing what holds the gate -->
+    <!-- Supertrend flip at bar 15 (ATR Mult 4.5 lowered) -->
+    <line x1="620" y1="175" x2="620" y2="32" stroke="#26a69a" stroke-width="0.5"/>
+    <rect x="555" y="20" width="130" height="20" rx="3" fill="#1e2230" stroke="#26a69a" stroke-width="1"/>
+    <text x="620" y="33" text-anchor="middle" class="callout-text-green">② ST flip @ b15 (earlier)</text>
+
+    <!-- Impulse climax candle still required -->
+    <line x1="820" y1="240" x2="820" y2="58" stroke="#f5a623" stroke-width="0.5"/>
+    <rect x="765" y="46" width="110" height="20" rx="3" fill="#1e2230" stroke="#f5a623" stroke-width="1"/>
+    <text x="820" y="59" text-anchor="middle" class="callout-text-orange">④ IMPULSE @ b20</text>
+
+    <!-- KDE VA Max Density 0.2 — TIGHTER, still gating -->
+    <line x1="900" y1="292" x2="900" y2="85" stroke="#ef5350" stroke-width="0.5"/>
+    <rect x="830" y="72" width="140" height="20" rx="3" fill="#1e2230" stroke="#ef5350" stroke-width="1"/>
+    <text x="900" y="85" text-anchor="middle" class="callout-text-red">⑥ KDE VA 0.2 (stricter)</text>
+
+    <!-- DI Period 25 cross — slower, delays -->
+    <line x1="940" y1="300" x2="940" y2="110" stroke="#f5a623" stroke-width="0.5"/>
+    <rect x="875" y="98" width="130" height="20" rx="3" fill="#1e2230" stroke="#f5a623" stroke-width="1"/>
+    <text x="940" y="111" text-anchor="middle" class="callout-text-orange">⑧ DI 25 cross (slow)</text>
+
+    <!-- =========== ENTRY MARKERS =========== -->
+
+    <!-- Recommended Relaxed (green) — bar 17 -->
+    <line x1="700" y1="210" x2="700" y2="430" stroke="#26a69a" stroke-width="1" stroke-dasharray="4,3" opacity="0.6"/>
+    <circle cx="700" cy="210" r="9" fill="#26a69a" stroke="#fff" stroke-width="2"/>
+    <text x="700" y="215" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">R</text>
+    <line x1="700" y1="210" x2="1330" y2="210" stroke="#26a69a" stroke-width="0.5" stroke-dasharray="2,3" opacity="0.4"/>
+    <text x="710" y="205" class="callout-text-green">R: 0.04020 (bar 17) — Recommended</text>
+
+    <!-- v3 Current (orange) — bar 23 (impulse + KDE 0.2 + DI 25 hold it) -->
+    <line x1="940" y1="300" x2="940" y2="430" stroke="#f5a623" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.85"/>
+    <circle cx="940" cy="300" r="11" fill="#f5a623" stroke="#fff" stroke-width="2.5"/>
+    <text x="940" y="305" text-anchor="middle" fill="#131722" font-size="11" font-weight="bold">v3</text>
+    <line x1="940" y1="300" x2="1330" y2="300" stroke="#f5a623" stroke-width="0.7" stroke-dasharray="2,3" opacity="0.5"/>
+    <text x="952" y="295" class="callout-text">v3 CURRENT: ~0.03910 (bar 23)</text>
+
+    <!-- v2 (purple) — bar 22 -->
+    <circle cx="900" cy="292" r="6" fill="#b388ff" stroke="#fff" stroke-width="1.5" opacity="0.6"/>
+    <text x="900" y="296" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">v2</text>
+
+    <!-- v1 Strict (red) — bar 25 -->
+    <circle cx="1020" cy="316" r="7" fill="#ef5350" stroke="#fff" stroke-width="1.5" opacity="0.6"/>
+    <text x="1020" y="320" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">v1</text>
+    <text x="1030" y="311" class="callout-text-red">v1 strict 0.03904</text>
+
+    <!-- Bar axis -->
+    <text x="60" y="455" class="axis-text" text-anchor="middle">b1</text>
+    <text x="260" y="455" class="axis-text" text-anchor="middle">b6</text>
+    <text x="460" y="455" class="axis-text" text-anchor="middle">b11</text>
+    <text x="620" y="455" class="axis-text" text-anchor="middle" fill="#26a69a">b15 FLIP (v3)</text>
+    <text x="700" y="455" class="axis-text" text-anchor="middle" fill="#26a69a">b17 ↑R</text>
+    <text x="900" y="455" class="axis-text" text-anchor="middle" fill="#b388ff">b22 ↑v2</text>
+    <text x="940" y="455" class="axis-text" text-anchor="middle" fill="#f5a623">b23 ↑v3</text>
+    <text x="1020" y="455" class="axis-text" text-anchor="middle" fill="#ef5350">b25 ↑v1</text>
+    <text x="1260" y="455" class="axis-text" text-anchor="middle">b32</text>
+
+  </svg>
+</div>
+
+<h2>3. Side-by-side: every config you've tried</h2>
+
+<div class="compare-grid">
+  <div class="compare-card v1">
+    <h3>v1 — Original Strict</h3>
+    <table>
+      <tr><td>ATR Mult</td><td>5.5</td></tr>
+      <tr><td>rVol</td><td>2.9 / 60</td></tr>
+      <tr><td>EMA Dist</td><td>0.9 ATR</td></tr>
+      <tr><td>KDE VA Max</td><td>0.4</td></tr>
+      <tr><td>Impulse</td><td>ON</td></tr>
+      <tr><td>DI Period</td><td>16</td></tr>
+      <tr><td>Entry bar</td><td>25</td></tr>
+      <tr><td>Entry $</td><td>0.03904</td></tr>
+    </table>
+  </div>
+
+  <div class="compare-card v2">
+    <h3>v2 — EMA Dist killed</h3>
+    <table>
+      <tr><td>ATR Mult</td><td>5.5</td></tr>
+      <tr><td>rVol</td><td>2.9 / 60</td></tr>
+      <tr><td>EMA Dist</td><td><b style="color:#26a69a">0.1 ATR ✓</b></td></tr>
+      <tr><td>KDE VA Max</td><td><b style="color:#ef5350">0.3 ✗</b></td></tr>
+      <tr><td>Impulse</td><td>ON</td></tr>
+      <tr><td>DI Period</td><td>16</td></tr>
+      <tr><td>Entry bar</td><td>22</td></tr>
+      <tr><td>Entry $</td><td>~0.03920</td></tr>
+    </table>
+  </div>
+
+  <div class="compare-card v3">
+    <h3>v3 — Current</h3>
+    <table>
+      <tr><td>ATR Mult</td><td><b style="color:#26a69a">4.5 ✓</b></td></tr>
+      <tr><td>rVol</td><td>2.9 / 60</td></tr>
+      <tr><td>EMA Dist</td><td>0.1 ATR</td></tr>
+      <tr><td>KDE VA Max</td><td><b style="color:#ef5350">0.2 ✗✗</b></td></tr>
+      <tr><td>Impulse</td><td>ON</td></tr>
+      <tr><td>DI Period</td><td><b style="color:#f5a623">25 ⚠</b></td></tr>
+      <tr><td>Entry bar</td><td>~23</td></tr>
+      <tr><td>Entry $</td><td>~0.03910</td></tr>
+    </table>
+  </div>
+
+  <div class="compare-card ideal">
+    <h3>Recommended target</h3>
+    <table>
+      <tr><td>ATR Mult</td><td>3.0</td></tr>
+      <tr><td>rVol</td><td>1.8 / 20</td></tr>
+      <tr><td>EMA Dist</td><td>0.1 ATR</td></tr>
+      <tr><td>KDE VA Max</td><td>0.5</td></tr>
+      <tr><td>Impulse</td><td><b>OFF</b></td></tr>
+      <tr><td>DI Period</td><td>14</td></tr>
+      <tr><td>Entry bar</td><td>17</td></tr>
+      <tr><td>Entry $</td><td>0.04020</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="recommend">
+  <h3>Reality check: v3 vs v2 — barely any improvement</h3>
+  <ul>
+    <li><b>What you gained:</b> ATR Mult 4.5 → flip 1 bar earlier; HTF Slope min loosened → confirms ~0.5 bar earlier.</li>
+    <li><b>What you gave back:</b> KDE VA Max Density 0.3 → 0.2 → location gate now waits ~1 bar longer; DI Period 16 → 25 → direction confirmation lags ~1–2 bars longer.</li>
+    <li><b>Net:</b> v3 entry lands roughly where v2 did (~bar 22–23). You're moving sideways, not closer to bar 17.</li>
+  </ul>
+  <p style="font-size:12px; margin-top:12px; color:#b2b5be;">
+    <b>The pattern:</b> every time you loosen one gate (good), you tighten another (cancels it). To actually shift entries earlier, you have to keep the loosening AND stop adding new strict requirements. The relentless tightening of KDE VA across v1→v2→v3 (0.4 → 0.3 → 0.2) is the main thing blocking progress.
+  </p>
+  <p style="font-size:12px; margin-top:12px; color:#b2b5be;">
+    <b>Three things to try in v4:</b>
+    <br>1. <b>KDE VA Max Density 0.2 → 0.5</b>, keep LB 60, BW 0.2 (sharp curve, loose threshold)
+    <br>2. <b>Disable Impulse Candle Gate</b> entirely
+    <br>3. <b>DI Period 25 → 14</b> (classic Wilder)
+  </p>
+</div>
+
+</body>
+</html>

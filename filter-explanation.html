@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Supertrend + RelVol Filter Chain — Why Entries Are Late</title>
+<style>
+  body {
+    margin: 0;
+    background: #131722;
+    color: #d1d4dc;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: 20px;
+  }
+  h1 {
+    color: #f7f8fa;
+    font-size: 18px;
+    margin: 0 0 4px 0;
+  }
+  .subtitle { color: #787b86; font-size: 12px; margin-bottom: 16px; }
+  .chart-wrap {
+    background: #131722;
+    border: 1px solid #2a2e39;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: 11px;
+    color: #b2b5be;
+    margin-bottom: 12px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+  .legend-line { width: 16px; height: 2px; }
+  svg { display: block; width: 100%; max-width: 1400px; }
+  .annotation {
+    background: #1c2030;
+    border-left: 3px solid #f5a623;
+    padding: 8px 12px;
+    margin: 4px 0;
+    font-size: 12px;
+    border-radius: 3px;
+  }
+  .annotation .num {
+    display: inline-block;
+    background: #f5a623;
+    color: #131722;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 18px;
+    font-weight: bold;
+    margin-right: 8px;
+    font-size: 11px;
+  }
+  .annotation.relaxed { border-left-color: #26a69a; }
+  .annotation.relaxed .num { background: #26a69a; color: #fff; }
+  .grid-text { fill: #4a5060; font-size: 10px; font-family: monospace; }
+  .axis-text { fill: #787b86; font-size: 10px; font-family: monospace; }
+  .label-text { fill: #d1d4dc; font-size: 11px; font-family: monospace; }
+  .label-text-bold { fill: #f7f8fa; font-size: 12px; font-weight: 600; font-family: monospace; }
+  .callout-bg { fill: #1e2230; stroke: #f5a623; stroke-width: 1.5; }
+  .callout-bg-green { fill: #1e2230; stroke: #26a69a; stroke-width: 1.5; }
+  .callout-bg-red { fill: #1e2230; stroke: #ef5350; stroke-width: 1.5; }
+  .callout-text { fill: #f5a623; font-size: 10px; font-weight: 600; font-family: monospace; }
+  .callout-text-green { fill: #26a69a; font-size: 10px; font-weight: 600; font-family: monospace; }
+  .callout-text-red { fill: #ef5350; font-size: 10px; font-weight: 600; font-family: monospace; }
+  .grid line { stroke: #2a2e39; stroke-width: 0.5; }
+  .panel-divider { stroke: #2a2e39; stroke-width: 1; }
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 24px;
+  }
+  .compare-card {
+    background: #1c2030;
+    border: 1px solid #2a2e39;
+    border-radius: 6px;
+    padding: 16px;
+  }
+  .compare-card h3 { margin: 0 0 8px 0; font-size: 14px; }
+  .strict h3 { color: #ef5350; }
+  .relaxed h3 { color: #26a69a; }
+  .compare-card table { width: 100%; font-size: 11px; font-family: monospace; }
+  .compare-card td { padding: 4px 8px; border-bottom: 1px solid #2a2e39; }
+  .compare-card td:first-child { color: #787b86; }
+  .compare-card td:last-child { text-align: right; color: #d1d4dc; }
+</style>
+</head>
+<body>
+
+<h1>HANAUSDT • 15m • Supertrend + RelVol Filter Chain</h1>
+<div class="subtitle">How each filter delays signal firing — and why your entries land at the bottom of the move</div>
+
+<div class="chart-wrap">
+  <div class="legend">
+    <div class="legend-item"><div class="legend-line" style="background:#a674e6"></div>EMA200 (HTF Bias)</div>
+    <div class="legend-item"><div class="legend-line" style="background:#26a69a"></div>Supertrend Bull</div>
+    <div class="legend-item"><div class="legend-line" style="background:#ef5350"></div>Supertrend Bear</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>Strict Config — late entry</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#26a69a"></div>Relaxed Config — early entry</div>
+  </div>
+
+  <svg viewBox="0 0 1400 750" preserveAspectRatio="xMidYMid meet">
+
+    <!-- === PRICE PANEL (0-440) === -->
+    <defs>
+      <pattern id="grid" width="40" height="20" patternUnits="userSpaceOnUse">
+        <path d="M 40 0 L 0 0 0 20" fill="none" stroke="#1f2330" stroke-width="0.5"/>
+      </pattern>
+    </defs>
+    <rect x="50" y="20" width="1280" height="420" fill="url(#grid)" />
+
+    <!-- Y-axis labels (price) -->
+    <text x="1340" y="35" class="axis-text">0.04200</text>
+    <text x="1340" y="95" class="axis-text">0.04100</text>
+    <text x="1340" y="155" class="axis-text">0.04000</text>
+    <text x="1340" y="215" class="axis-text">0.03950</text>
+    <text x="1340" y="275" class="axis-text">0.03900</text>
+    <text x="1340" y="335" class="axis-text">0.03850</text>
+    <text x="1340" y="395" class="axis-text">0.03800</text>
+    <text x="1340" y="435" class="axis-text">0.03750</text>
+
+    <!-- Horizontal grid lines -->
+    <g class="grid">
+      <line x1="50" y1="30" x2="1330" y2="30"/>
+      <line x1="50" y1="90" x2="1330" y2="90"/>
+      <line x1="50" y1="150" x2="1330" y2="150"/>
+      <line x1="50" y1="210" x2="1330" y2="210"/>
+      <line x1="50" y1="270" x2="1330" y2="270"/>
+      <line x1="50" y1="330" x2="1330" y2="330"/>
+      <line x1="50" y1="390" x2="1330" y2="390"/>
+    </g>
+
+    <!-- EMA200 (purple) — slow downward slope from ~0.04150 to ~0.04050 -->
+    <polyline points="
+      60,55 100,55 140,55 180,57 220,60 260,63 300,67 340,71 380,76 420,82
+      460,90 500,98 540,108 580,118 620,128 660,138 700,148 740,157 780,166 820,174
+      860,180 900,185 940,189 980,192 1020,194 1060,196 1100,197 1140,198 1180,199 1220,200 1260,201 1300,202
+    " fill="none" stroke="#a674e6" stroke-width="2"/>
+    <text x="65" y="48" class="label-text" fill="#a674e6">EMA 200 (HTF)</text>
+
+    <!-- Supertrend bull (green) bars 1-15, then flips bear (red) bars 16+ -->
+    <polyline points="60,180 100,182 140,184 180,186 220,188 260,190 300,191 340,192 380,193 420,194 460,195 500,196 540,197 580,198 620,199 660,200" fill="none" stroke="#26a69a" stroke-width="1.5" stroke-dasharray="3,2"/>
+    <polyline points="660,80 700,82 740,86 780,92 820,100 860,110 900,122 940,135 980,150 1020,165 1060,180 1100,195 1140,210 1180,220 1220,228 1260,235 1300,240" fill="none" stroke="#ef5350" stroke-width="1.5" stroke-dasharray="3,2"/>
+    <text x="610" y="208" class="label-text" fill="#26a69a" font-size="9">ST Bull</text>
+    <text x="700" y="78" class="label-text" fill="#ef5350" font-size="9">ST Bear ← flip @ bar 16</text>
+
+    <!-- ============ CANDLES ============ -->
+    <!-- Bars 1-15: chop sideways around 0.0408-0.0412 -->
+    <g id="candles">
+      <!-- bar 1  (40px width slot, candle body 12px wide) -->
+      <line x1="60"  y1="105" x2="60"  y2="125" stroke="#787b86" stroke-width="1"/>
+      <rect x="54"  y="110" width="12" height="10" fill="#26a69a"/>
+
+      <!-- bar 2 -->
+      <line x1="100" y1="100" x2="100" y2="128" stroke="#787b86" stroke-width="1"/>
+      <rect x="94"  y="115" width="12" height="8" fill="#ef5350"/>
+
+      <!-- bar 3 -->
+      <line x1="140" y1="95" x2="140" y2="120" stroke="#787b86" stroke-width="1"/>
+      <rect x="134" y="100" width="12" height="12" fill="#26a69a"/>
+
+      <!-- bar 4 -->
+      <line x1="180" y1="92" x2="180" y2="115" stroke="#787b86" stroke-width="1"/>
+      <rect x="174" y="98" width="12" height="11" fill="#26a69a"/>
+
+      <!-- bar 5 -->
+      <line x1="220" y1="95" x2="220" y2="125" stroke="#787b86" stroke-width="1"/>
+      <rect x="214" y="100" width="12" height="20" fill="#ef5350"/>
+
+      <!-- bar 6 -->
+      <line x1="260" y1="118" x2="260" y2="140" stroke="#787b86" stroke-width="1"/>
+      <rect x="254" y="122" width="12" height="14" fill="#26a69a"/>
+
+      <!-- bar 7 -->
+      <line x1="300" y1="120" x2="300" y2="142" stroke="#787b86" stroke-width="1"/>
+      <rect x="294" y="125" width="12" height="13" fill="#26a69a"/>
+
+      <!-- bar 8 -->
+      <line x1="340" y1="115" x2="340" y2="145" stroke="#787b86" stroke-width="1"/>
+      <rect x="334" y="120" width="12" height="20" fill="#ef5350"/>
+
+      <!-- bar 9 -->
+      <line x1="380" y1="125" x2="380" y2="150" stroke="#787b86" stroke-width="1"/>
+      <rect x="374" y="130" width="12" height="15" fill="#26a69a"/>
+
+      <!-- bar 10 -->
+      <line x1="420" y1="130" x2="420" y2="155" stroke="#787b86" stroke-width="1"/>
+      <rect x="414" y="135" width="12" height="15" fill="#ef5350"/>
+
+      <!-- bar 11 -->
+      <line x1="460" y1="135" x2="460" y2="158" stroke="#787b86" stroke-width="1"/>
+      <rect x="454" y="140" width="12" height="14" fill="#26a69a"/>
+
+      <!-- bar 12 -->
+      <line x1="500" y1="138" x2="500" y2="165" stroke="#787b86" stroke-width="1"/>
+      <rect x="494" y="142" width="12" height="20" fill="#ef5350"/>
+
+      <!-- bar 13 -->
+      <line x1="540" y1="145" x2="540" y2="172" stroke="#787b86" stroke-width="1"/>
+      <rect x="534" y="150" width="12" height="20" fill="#ef5350"/>
+
+      <!-- bar 14 (last bull candle before flip) -->
+      <line x1="580" y1="158" x2="580" y2="180" stroke="#787b86" stroke-width="1"/>
+      <rect x="574" y="162" width="12" height="16" fill="#ef5350"/>
+
+      <!-- bar 15 -->
+      <line x1="620" y1="170" x2="620" y2="195" stroke="#787b86" stroke-width="1"/>
+      <rect x="614" y="175" width="12" height="18" fill="#ef5350"/>
+
+      <!-- bar 16 — SUPERTREND FLIP -->
+      <line x1="660" y1="180" x2="660" y2="215" stroke="#787b86" stroke-width="1"/>
+      <rect x="654" y="185" width="12" height="28" fill="#ef5350"/>
+
+      <!-- bar 17 — relaxed entry approx here -->
+      <line x1="700" y1="190" x2="700" y2="225" stroke="#787b86" stroke-width="1"/>
+      <rect x="694" y="195" width="12" height="28" fill="#ef5350"/>
+
+      <!-- bar 18 — rVol satisfied -->
+      <line x1="740" y1="205" x2="740" y2="240" stroke="#787b86" stroke-width="1"/>
+      <rect x="734" y="210" width="12" height="28" fill="#ef5350"/>
+
+      <!-- bar 19 -->
+      <line x1="780" y1="220" x2="780" y2="255" stroke="#787b86" stroke-width="1"/>
+      <rect x="774" y="225" width="12" height="28" fill="#ef5350"/>
+
+      <!-- bar 20 — IMPULSE candle (big body) -->
+      <line x1="820" y1="230" x2="820" y2="285" stroke="#787b86" stroke-width="1"/>
+      <rect x="813" y="240" width="14" height="42" fill="#ef5350"/>
+
+      <!-- bar 21 — EMA Distance passes -->
+      <line x1="860" y1="265" x2="860" y2="305" stroke="#787b86" stroke-width="1"/>
+      <rect x="854" y="272" width="12" height="30" fill="#ef5350"/>
+
+      <!-- bar 22 — KDE VA passes -->
+      <line x1="900" y1="285" x2="900" y2="320" stroke="#787b86" stroke-width="1"/>
+      <rect x="894" y="292" width="12" height="25" fill="#ef5350"/>
+
+      <!-- bar 23 — ADX/DI passes -->
+      <line x1="940" y1="295" x2="940" y2="325" stroke="#787b86" stroke-width="1"/>
+      <rect x="934" y="300" width="12" height="22" fill="#ef5350"/>
+
+      <!-- bar 24 — HTF Slope passes -->
+      <line x1="980" y1="298" x2="980" y2="325" stroke="#787b86" stroke-width="1"/>
+      <rect x="974" y="302" width="12" height="20" fill="#ef5350"/>
+
+      <!-- bar 25 — SIGNAL FIRES — strict entry -->
+      <line x1="1020" y1="300" x2="1020" y2="328" stroke="#787b86" stroke-width="1"/>
+      <rect x="1014" y="304" width="12" height="22" fill="#ef5350"/>
+
+      <!-- bar 26-32 — price drops further then chops -->
+      <line x1="1060" y1="318" x2="1060" y2="345" stroke="#787b86" stroke-width="1"/>
+      <rect x="1054" y="322" width="12" height="20" fill="#ef5350"/>
+
+      <line x1="1100" y1="335" x2="1100" y2="360" stroke="#787b86" stroke-width="1"/>
+      <rect x="1094" y="340" width="12" height="18" fill="#ef5350"/>
+
+      <line x1="1140" y1="345" x2="1140" y2="370" stroke="#787b86" stroke-width="1"/>
+      <rect x="1134" y="350" width="12" height="16" fill="#ef5350"/>
+
+      <line x1="1180" y1="355" x2="1180" y2="378" stroke="#787b86" stroke-width="1"/>
+      <rect x="1174" y="358" width="12" height="16" fill="#26a69a"/>
+
+      <line x1="1220" y1="358" x2="1220" y2="380" stroke="#787b86" stroke-width="1"/>
+      <rect x="1214" y="362" width="12" height="14" fill="#ef5350"/>
+
+      <line x1="1260" y1="360" x2="1260" y2="383" stroke="#787b86" stroke-width="1"/>
+      <rect x="1254" y="364" width="12" height="14" fill="#26a69a"/>
+
+      <line x1="1300" y1="362" x2="1300" y2="382" stroke="#787b86" stroke-width="1"/>
+      <rect x="1294" y="366" width="12" height="12" fill="#ef5350"/>
+    </g>
+
+    <!-- Relaxed entry marker (green) at bar 17 -->
+    <line x1="700" y1="210" x2="700" y2="380" stroke="#26a69a" stroke-width="1" stroke-dasharray="4,3" opacity="0.6"/>
+    <circle cx="700" cy="210" r="7" fill="#26a69a" stroke="#fff" stroke-width="2"/>
+    <text x="700" y="214" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">R</text>
+
+    <!-- Strict entry marker (orange) at bar 25 -->
+    <line x1="1020" y1="316" x2="1020" y2="380" stroke="#f5a623" stroke-width="1" stroke-dasharray="4,3" opacity="0.6"/>
+    <circle cx="1020" cy="316" r="7" fill="#f5a623" stroke="#fff" stroke-width="2"/>
+    <text x="1020" y="320" text-anchor="middle" fill="#131722" font-size="9" font-weight="bold">S</text>
+
+    <!-- Entry price horizontal lines -->
+    <line x1="700" y1="210" x2="1020" y2="210" stroke="#26a69a" stroke-width="0.5" stroke-dasharray="2,3" opacity="0.5"/>
+    <line x1="1020" y1="316" x2="1300" y2="316" stroke="#f5a623" stroke-width="0.5" stroke-dasharray="2,3" opacity="0.5"/>
+
+    <text x="710" y="205" class="callout-text-green">Relaxed entry @ 0.04020</text>
+    <text x="1030" y="311" class="callout-text">Strict entry @ 0.03904</text>
+
+    <!-- Filter activation callouts -->
+    <!-- ② Supertrend Flip -->
+    <line x1="660" y1="185" x2="660" y2="55" stroke="#f5a623" stroke-width="0.5"/>
+    <rect class="callout-bg" x="610" y="40" width="100" height="22" rx="3"/>
+    <text x="660" y="55" text-anchor="middle" class="callout-text">② ST FLIP (bar 16)</text>
+
+    <!-- ③ rVol -->
+    <line x1="740" y1="210" x2="740" y2="80" stroke="#f5a623" stroke-width="0.5"/>
+    <rect class="callout-bg" x="690" y="65" width="100" height="22" rx="3"/>
+    <text x="740" y="80" text-anchor="middle" class="callout-text">③ rVol ≥ 2.9</text>
+
+    <!-- ④ Impulse -->
+    <line x1="820" y1="240" x2="820" y2="105" stroke="#f5a623" stroke-width="0.5"/>
+    <rect class="callout-bg" x="770" y="90" width="100" height="22" rx="3"/>
+    <text x="820" y="105" text-anchor="middle" class="callout-text">④ IMPULSE 60%</text>
+
+    <!-- ⑤ EMA Dist -->
+    <line x1="860" y1="272" x2="860" y2="130" stroke="#f5a623" stroke-width="0.5"/>
+    <rect class="callout-bg" x="800" y="115" width="120" height="22" rx="3"/>
+    <text x="860" y="130" text-anchor="middle" class="callout-text">⑤ EMA DIST ≥ 0.9 ATR</text>
+
+    <!-- ⑥ KDE VA -->
+    <line x1="900" y1="292" x2="900" y2="155" stroke="#f5a623" stroke-width="0.5"/>
+    <rect class="callout-bg" x="845" y="140" width="110" height="22" rx="3"/>
+    <text x="900" y="155" text-anchor="middle" class="callout-text">⑥ KDE VA ≤ 0.4</text>
+
+    <!-- ⑦⑧ ADX + DI -->
+    <line x1="940" y1="300" x2="940" y2="180" stroke="#f5a623" stroke-width="0.5"/>
+    <rect class="callout-bg" x="880" y="165" width="120" height="22" rx="3"/>
+    <text x="940" y="180" text-anchor="middle" class="callout-text">⑦⑧ ADX 18 + DI</text>
+
+    <!-- ⑨ HTF Slope -->
+    <line x1="980" y1="302" x2="980" y2="205" stroke="#f5a623" stroke-width="0.5"/>
+    <rect class="callout-bg" x="920" y="190" width="120" height="22" rx="3"/>
+    <text x="980" y="205" text-anchor="middle" class="callout-text">⑨ HTF SLOPE 0.03%</text>
+
+    <!-- Bar numbers x-axis (price panel) -->
+    <text x="60" y="455" class="axis-text" text-anchor="middle">b1</text>
+    <text x="260" y="455" class="axis-text" text-anchor="middle">b6</text>
+    <text x="460" y="455" class="axis-text" text-anchor="middle">b11</text>
+    <text x="660" y="455" class="axis-text" text-anchor="middle">b16 ← FLIP</text>
+    <text x="700" y="467" class="axis-text" text-anchor="middle" fill="#26a69a">↑ Relaxed</text>
+    <text x="860" y="455" class="axis-text" text-anchor="middle">b21</text>
+    <text x="1020" y="455" class="axis-text" text-anchor="middle">b25 ← SIGNAL</text>
+    <text x="1020" y="467" class="axis-text" text-anchor="middle" fill="#f5a623">↑ Strict</text>
+    <text x="1220" y="455" class="axis-text" text-anchor="middle">b30</text>
+
+    <line class="panel-divider" x1="50" y1="478" x2="1330" y2="478"/>
+
+    <!-- === VOLUME PANEL (480-580) === -->
+    <text x="60" y="498" class="label-text-bold">Volume  SMA(60)</text>
+    <line x1="50" y1="555" x2="1330" y2="555" stroke="#f5a623" stroke-width="0.5" stroke-dasharray="3,3" opacity="0.7"/>
+    <text x="1340" y="558" class="axis-text" fill="#f5a623">2.9× SMA threshold</text>
+
+    <g id="volume">
+      <rect x="54"  y="555" width="12" height="20" fill="#26a69a" opacity="0.6"/>
+      <rect x="94"  y="557" width="12" height="18" fill="#ef5350" opacity="0.6"/>
+      <rect x="134" y="552" width="12" height="23" fill="#26a69a" opacity="0.6"/>
+      <rect x="174" y="550" width="12" height="25" fill="#26a69a" opacity="0.6"/>
+      <rect x="214" y="548" width="12" height="27" fill="#ef5350" opacity="0.6"/>
+      <rect x="254" y="552" width="12" height="23" fill="#26a69a" opacity="0.6"/>
+      <rect x="294" y="555" width="12" height="20" fill="#26a69a" opacity="0.6"/>
+      <rect x="334" y="550" width="12" height="25" fill="#ef5350" opacity="0.6"/>
+      <rect x="374" y="556" width="12" height="19" fill="#26a69a" opacity="0.6"/>
+      <rect x="414" y="554" width="12" height="21" fill="#ef5350" opacity="0.6"/>
+      <rect x="454" y="556" width="12" height="19" fill="#26a69a" opacity="0.6"/>
+      <rect x="494" y="552" width="12" height="23" fill="#ef5350" opacity="0.6"/>
+      <rect x="534" y="548" width="12" height="27" fill="#ef5350" opacity="0.6"/>
+      <rect x="574" y="546" width="12" height="29" fill="#ef5350" opacity="0.6"/>
+      <rect x="614" y="540" width="12" height="35" fill="#ef5350" opacity="0.6"/>
+
+      <!-- bar 16 flip — moderate volume -->
+      <rect x="654" y="530" width="12" height="45" fill="#ef5350" opacity="0.8"/>
+      <!-- bar 17 -->
+      <rect x="694" y="520" width="12" height="55" fill="#ef5350" opacity="0.8"/>
+      <!-- bar 18 — rVol 2.9× passes (volume spike) -->
+      <rect x="734" y="495" width="12" height="80" fill="#ef5350"/>
+      <!-- bar 19 -->
+      <rect x="774" y="500" width="12" height="75" fill="#ef5350"/>
+      <!-- bar 20 — impulse with HUGE volume -->
+      <rect x="813" y="485" width="14" height="90" fill="#ef5350"/>
+      <!-- bar 21+ — fading -->
+      <rect x="854" y="515" width="12" height="60" fill="#ef5350" opacity="0.8"/>
+      <rect x="894" y="525" width="12" height="50" fill="#ef5350" opacity="0.7"/>
+      <rect x="934" y="535" width="12" height="40" fill="#ef5350" opacity="0.7"/>
+      <rect x="974" y="540" width="12" height="35" fill="#ef5350" opacity="0.6"/>
+      <rect x="1014" y="545" width="12" height="30" fill="#ef5350" opacity="0.6"/>
+      <rect x="1054" y="550" width="12" height="25" fill="#ef5350" opacity="0.5"/>
+      <rect x="1094" y="554" width="12" height="21" fill="#ef5350" opacity="0.5"/>
+      <rect x="1134" y="556" width="12" height="19" fill="#ef5350" opacity="0.5"/>
+      <rect x="1174" y="558" width="12" height="17" fill="#26a69a" opacity="0.5"/>
+      <rect x="1214" y="560" width="12" height="15" fill="#ef5350" opacity="0.5"/>
+      <rect x="1254" y="562" width="12" height="13" fill="#26a69a" opacity="0.5"/>
+      <rect x="1294" y="563" width="12" height="12" fill="#ef5350" opacity="0.5"/>
+    </g>
+
+    <line class="panel-divider" x1="50" y1="585" x2="1330" y2="585"/>
+
+    <!-- === ADX/DI PANEL (590-720) === -->
+    <text x="60" y="605" class="label-text-bold">ADX(10) • DI Period 16</text>
+    <text x="200" y="605" class="label-text" fill="#f5a623">ADX</text>
+    <text x="240" y="605" class="label-text" fill="#26a69a">DI+</text>
+    <text x="280" y="605" class="label-text" fill="#ef5350">DI−</text>
+
+    <!-- ADX threshold 18 line -->
+    <line x1="50" y1="680" x2="1330" y2="680" stroke="#f5a623" stroke-width="0.5" stroke-dasharray="3,3" opacity="0.7"/>
+    <text x="1340" y="683" class="axis-text" fill="#f5a623">18 (ADX min)</text>
+
+    <!-- Bars 1-15: ADX low (chop) -->
+    <polyline points="60,700 100,705 140,702 180,700 220,698 260,701 300,703 340,700 380,702 420,705 460,703 500,701 540,700 580,696 620,690" fill="none" stroke="#f5a623" stroke-width="2"/>
+    <!-- Bars 15-30: ADX rises -->
+    <polyline points="620,690 660,682 700,675 740,665 780,652 820,635 860,615 900,600 940,615 980,625 1020,635 1060,645 1100,655 1140,665 1180,672 1220,678 1260,683 1300,687" fill="none" stroke="#f5a623" stroke-width="2"/>
+
+    <!-- DI+ — bullish DM, starts ~25, drops below DI- after bar 16 -->
+    <polyline points="60,665 100,668 140,665 180,663 220,668 260,665 300,663 340,668 380,665 420,667 460,665 500,668 540,672 580,680 620,690 660,695 700,700 740,705 780,708 820,710 860,712 900,712 940,710 980,708 1020,705 1060,703 1100,701 1140,700 1180,698 1220,697 1260,697 1300,696" fill="none" stroke="#26a69a" stroke-width="1.5"/>
+
+    <!-- DI- — bearish DM, rises after bar 16 to cross above DI+ at bar 23 -->
+    <polyline points="60,675 100,673 140,675 180,677 220,673 260,675 300,677 340,673 380,675 420,673 460,675 500,673 540,670 580,668 620,665 660,655 700,640 740,625 780,610 820,595 860,585 900,580 940,580 980,585 1020,590 1060,594 1100,597 1140,599 1180,600 1220,600 1260,600 1300,599" fill="none" stroke="#ef5350" stroke-width="1.5"/>
+
+    <!-- ADX crosses 18 at bar 23 — annotate -->
+    <line x1="940" y1="615" x2="940" y2="600" stroke="#f5a623" stroke-width="0.5"/>
+    <rect class="callout-bg" x="900" y="600" width="80" height="20" rx="3"/>
+    <text x="940" y="613" text-anchor="middle" class="callout-text">⑦ ADX 18 ✓</text>
+
+    <!-- DI cross at bar 22-23 -->
+    <circle cx="900" cy="595" r="4" fill="#ef5350"/>
+    <text x="900" y="585" text-anchor="middle" class="callout-text-red">⑧ DI− cross</text>
+
+    <!-- Y-axis ADX -->
+    <text x="1340" y="700" class="axis-text">0</text>
+    <text x="1340" y="640" class="axis-text">20</text>
+    <text x="1340" y="600" class="axis-text">35</text>
+
+    <text x="675" y="743" class="label-text" fill="#787b86" font-size="10">Bars 1-15: chop, ADX flat below 18, DI± entangled → no signal possible</text>
+
+  </svg>
+</div>
+
+<h2 style="color:#f7f8fa; font-size:15px; margin-top:20px;">Filter activation timeline (your current strict config)</h2>
+
+<div class="annotation"><span class="num">1</span><b>Bars 1–15:</b> Price hugs EMA200 in a tight range. Supertrend stays bullish. <b>No signal possible</b> — all gates blocked by missing flip.</div>
+<div class="annotation"><span class="num">2</span><b>Bar 16 — Supertrend FLIPS bear.</b> But ATR Mult 5.5 made the flip lag by 2 bars vs default. Earliest possible signal moment.</div>
+<div class="annotation"><span class="num">3</span><b>Bar 18 — rVol ≥ 2.9 passes.</b> Volume spikes 3× the 60-bar average. This level of volume usually marks climax/exhaustion, not the start of moves.</div>
+<div class="annotation"><span class="num">4</span><b>Bar 20 — Impulse Candle (60% body).</b> A wide red candle forms. By definition this *is* the move — entering on its close = buying the climax.</div>
+<div class="annotation"><span class="num">5</span><b>Bar 21 — EMA Distance ≥ 0.9 ATR passes.</b> Price now ~1.3% below EMA200. The gate *explicitly requires extension*, so it can only open after price has already extended.</div>
+<div class="annotation"><span class="num">6</span><b>Bar 22 — KDE VA Density ≤ 0.4 passes.</b> Price has left the prior value-area cluster. Another "you must already have moved" filter.</div>
+<div class="annotation"><span class="num">7</span><b>Bar 23 — ADX(10) crosses 18 + DI− > DI+ (bottom panel).</b> Trend strength + direction confirmed by ADX panel.</div>
+<div class="annotation"><span class="num">8</span><b>Bar 24 — HTF Slope ≥ 0.03%/bar passes.</b> The 200 EMA finally tilts down enough.</div>
+<div class="annotation"><span class="num">9</span><b>Bar 25 — ALL gates green → SIGNAL FIRES at 0.03904.</b> But price has already dropped ~3.2% from the move start. Price bottoms 3 bars later then chops sideways. Trade is in profit, but most of the move is captured by latecomers; you got the *tail*, not the body.</div>
+
+<div class="compare-grid">
+  <div class="compare-card strict">
+    <h3>Strict config (current)</h3>
+    <table>
+      <tr><td>Entry bar</td><td>25</td></tr>
+      <tr><td>Entry price</td><td>0.03904</td></tr>
+      <tr><td>Move start price</td><td>0.04070</td></tr>
+      <tr><td>Distance from move start</td><td>-4.1%</td></tr>
+      <tr><td>Move bottom price</td><td>0.03720</td></tr>
+      <tr><td>Captured move</td><td>-4.7%</td></tr>
+      <tr><td>Backtest WR</td><td>28.3% (fixed) / 48.1% (ATR)</td></tr>
+      <tr><td>Issue</td><td><b style="color:#ef5350">Late entry, small captured R</b></td></tr>
+    </table>
+  </div>
+
+  <div class="compare-card relaxed">
+    <h3>Relaxed config (proposed)</h3>
+    <table>
+      <tr><td>ATR Mult</td><td>5.5 → 3.0</td></tr>
+      <tr><td>rVol Min</td><td>2.9 → 1.8</td></tr>
+      <tr><td>EMA Distance</td><td>0.9 → 0.4 ATR</td></tr>
+      <tr><td>KDE VA Max Density</td><td>0.4 → 0.6</td></tr>
+      <tr><td>Impulse Candle</td><td>ON → OFF</td></tr>
+      <tr><td>Entry bar</td><td>17</td></tr>
+      <tr><td>Entry price</td><td>0.04020</td></tr>
+      <tr><td>Distance from move start</td><td>-1.2%</td></tr>
+      <tr><td>Captured move</td><td>+8.1% (vs +4.7%)</td></tr>
+      <tr><td>Edge</td><td><b style="color:#26a69a">~73% larger captured move</b></td></tr>
+    </table>
+  </div>
+</div>
+
+<p style="font-size:12px; color:#787b86; margin-top:24px;">
+The no-chase filter you just added in <code style="color:#d1d4dc;">mexcTrader.placeOrder()</code> covers the gap between the green "R" marker and actual order placement. If price has moved more than <code style="color:#d1d4dc;">maxChasePct</code> from signal entry by the time the order ships, the trade is skipped — preventing the strict-config scenario from becoming a real fill.
+</p>
+
+</body>
+</html>
