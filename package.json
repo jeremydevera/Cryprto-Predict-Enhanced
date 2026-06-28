@@ -15,7 +15,8 @@
     "test:sqz": "tsx scripts/parity-sqz.ts",
     "test:pnl": "tsx scripts/pnl-test.ts",
     "test": "tsx scripts/parity-test.ts && tsx scripts/parity-sqz.ts && tsx scripts/pnl-test.ts && tsx scripts/parity-diff-test.ts",
-    "test:paritydiff": "tsx scripts/parity-diff-test.ts"
+    "test:paritydiff": "tsx scripts/parity-diff-test.ts",
+    "sim:baccarat": "tsx scripts/baccarat-sim.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
