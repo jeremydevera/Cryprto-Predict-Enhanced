@@ -290,4 +290,165 @@ function run() {
   )
 }
 
-run()
+// ════════════════════════════════════════════════════════════════════════
+//  GOAL MODE — "which system best reaches $2,000,000?"
+//  Run:  npx tsx scripts/baccarat-sim.ts --goal=2000000 --start=1000 --unit=10
+//  Play until you hit the goal (success) or go broke (bust). Measures the
+//  PROBABILITY of reaching the target — a risk-of-ruin-vs-goal question.
+// ════════════════════════════════════════════════════════════════════════
+
+/**
+ * stake function for goal mode: receives live bankroll + remaining-to-goal
+ * (both in units) and returns the stake in units.
+ */
+type GoalStake = (bankroll: number, toGoal: number) => number
+
+interface GoalStrategy {
+  name: string
+  stake: GoalStake
+  next?: (won: boolean) => void
+  reset?: () => void
+}
+
+function goalStrategies(): GoalStrategy[] {
+  // Bold play: bet everything you have, but never overshoot the goal.
+  // Dubins & Savage proved this MAXIMIZES P(reach target) in a subfair game.
+  const bold: GoalStrategy = {
+    name: 'Bold (all-in)',
+    stake: (bank, toGoal) => Math.min(bank, toGoal),
+  }
+
+  // Proportional bold: bet a fixed fraction of bankroll (less wild than all-in).
+  const proportional = (frac: number): GoalStrategy => ({
+    name: `Bold ${Math.round(frac * 100)}%`,
+    stake: (bank, toGoal) => Math.min(Math.max(bank * frac, 1), bank, toGoal),
+  })
+
+  const flatG: GoalStrategy = {
+    name: 'Flat',
+    stake: (bank, toGoal) => Math.min(1, bank, toGoal),
+  }
+
+  const seqG = (name: string, seq: number[]): GoalStrategy => {
+    let step = 0
+    return {
+      name,
+      stake: (bank, toGoal) => Math.min(seq[step], bank, toGoal),
+      next: (won) => {
+        step = won ? (step + 1) % seq.length : 0
+      },
+      reset: () => {
+        step = 0
+      },
+    }
+  }
+
+  const martG: GoalStrategy = (() => {
+    let losses = 0
+    return {
+      name: 'Martingale',
+      stake: (bank, toGoal) => Math.min(1 << losses, bank, toGoal),
+      next: (won: boolean) => {
+        losses = won ? 0 : losses + 1
+      },
+      reset: () => {
+        losses = 0
+      },
+    }
+  })()
+
+  return [flatG, seqG('1-3-2-4', [1, 3, 2, 4]), seqG('1-3-2-6', [1, 3, 2, 6]), martG, proportional(0.5), bold]
+}
+
+function playToGoal(
+  strat: GoalStrategy,
+  rng: () => number,
+  startUnits: number,
+  goalUnits: number,
+  maxHands: number,
+): { success: boolean; hands: number } {
+  strat.reset?.()
+  let bankroll = startUnits
+  for (let h = 0; h < maxHands; h++) {
+    const toGoal = goalUnits - bankroll
+    let stake = strat.stake(bankroll, toGoal)
+    if (stake < 1) stake = Math.min(1, bankroll) // floor of 1 unit while solvent
+    if (stake <= 0 || bankroll <= 0) return { success: false, hands: h }
+    const outcome = drawOutcome(rng)
+    if (outcome === 'tie') continue
+    const won = outcome === 'banker'
+    if (won) bankroll += stake * BANKER_PAYOUT
+    else bankroll -= stake
+    strat.next?.(won)
+    if (bankroll >= goalUnits) return { success: true, hands: h + 1 }
+    if (bankroll <= 0) return { success: false, hands: h + 1 }
+  }
+  return { success: false, hands: maxHands } // ran out of patience (treated as fail)
+}
+
+function runGoal() {
+  const goalDollars = arg('goal', 2_000_000)
+  const startDollars = arg('start', 1000)
+  const goalUnits = goalDollars / UNIT
+  const startUnits = startDollars / UNIT
+  const maxHands = arg('maxhands', 500_000)
+  const sessions = arg('sessions', 200_000)
+
+  console.log('═'.repeat(74))
+  console.log('  BACCARAT GOAL SEEK — probability of reaching a target')
+  console.log('═'.repeat(74))
+  console.log(
+    `  Start: $${startDollars.toLocaleString()}   Goal: $${goalDollars.toLocaleString()}` +
+      `  (${(goalDollars / startDollars).toFixed(0)}× your money)`,
+  )
+  console.log(
+    `  Unit: $${UNIT}   Sessions: ${sessions.toLocaleString()}   Bet: Banker (5% comm.)`,
+  )
+  console.log('─'.repeat(74))
+  console.log('  Strategy        ReachedGoal     OddsAs        AvgHandsToFinish')
+  console.log('─'.repeat(74))
+
+  for (const strat of goalStrategies()) {
+    const rng = makeRng(0xc0ffee)
+    let wins = 0
+    let handSum = 0
+    for (let s = 0; s < sessions; s++) {
+      const r = playToGoal(strat, rng, startUnits, goalUnits, maxHands)
+      if (r.success) wins++
+      handSum += r.hands
+    }
+    const p = wins / sessions
+    const odds = p > 0 ? `1 in ${Math.round(1 / p).toLocaleString()}` : 'never seen'
+    console.log(
+      '  ' +
+        strat.name.padEnd(15) +
+        (p * 100).toFixed(4).padStart(9) +
+        '%' +
+        odds.padStart(16) +
+        Math.round(handSum / sessions).toLocaleString().padStart(16),
+    )
+  }
+
+  console.log('─'.repeat(74))
+  console.log('  ReachedGoal = % of runs that hit the target before going broke')
+  console.log('═'.repeat(74))
+  console.log(
+    '\n  ANSWER — best system to reach $2,000,000:\n' +
+      '  BOLD PLAY (bet big, few hands). This is Dubins & Savage\'s theorem: in a\n' +
+      '  game with a house edge, the MORE you spread risk over many small bets, the\n' +
+      '  more certainly the edge grinds you to zero. To chase a far target your only\n' +
+      '  real hope is FEW, LARGE bets — give the edge fewer chances to act on you.\n\n' +
+      '  Flat & the slow progressions reach $2M essentially NEVER: millions of hands\n' +
+      '  means the 1.06% edge is mathematically certain to bust you first.\n\n' +
+      '  Reality check: even Bold play\'s odds are tiny — and "best" here only means\n' +
+      "  least-bad. There is NO system with a positive expectation. $2M from $1k by\n" +
+      '  baccarat is a lottery ticket, not a strategy.',
+  )
+}
+
+// Goal mode if --goal is passed; otherwise the per-session backtest.
+if (process.argv.some((a) => a.startsWith('--goal='))) {
+  runGoal()
+} else {
+  run()
+}
