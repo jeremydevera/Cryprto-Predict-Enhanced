@@ -107,11 +107,32 @@ function sequence(name: string, seq: number[]): Strategy {
   }
 }
 
+/**
+ * Martingale (NEGATIVE progression — shown only as a cautionary contrast):
+ * double the bet after every loss to recover, reset to base after a win.
+ * This is the system that detonates during a loss streak.
+ */
+function martingale(): Strategy {
+  let losses = 0
+  return {
+    name: 'Martingale',
+    stakeUnits: () => 1 << losses, // 1, 2, 4, 8, 16, ...
+    next: (won) => {
+      losses = won ? 0 : losses + 1
+    },
+    reset: () => {
+      losses = 0
+    },
+  }
+}
+
 interface SessionResult {
   endBankroll: number // in units
   peak: number
   busted: boolean
   endedAhead: boolean
+  maxDrawdown: number // deepest peak-to-trough drop in the session (units)
+  worstLossStreakCost: number // most units lost in a single uninterrupted loss run
 }
 
 function playSession(
@@ -123,6 +144,9 @@ function playSession(
   strat.reset()
   let bankroll = startBankroll
   let peak = startBankroll
+  let maxDrawdown = 0
+  let curLossCost = 0 // units lost in the current uninterrupted loss run
+  let worstLossStreakCost = 0
   for (let h = 0; h < hands; h++) {
     let stake = strat.stakeUnits()
     if (stake > bankroll) stake = bankroll // can't bet more than you have
@@ -132,12 +156,26 @@ function playSession(
       continue // push — stake returned, progression state unchanged
     }
     const won = outcome === 'banker'
-    if (won) bankroll += stake * BANKER_PAYOUT
-    else bankroll -= stake
+    if (won) {
+      bankroll += stake * BANKER_PAYOUT
+      curLossCost = 0 // streak broken
+    } else {
+      bankroll -= stake
+      curLossCost += stake
+      if (curLossCost > worstLossStreakCost) worstLossStreakCost = curLossCost
+    }
     strat.next(won)
     if (bankroll > peak) peak = bankroll
+    if (peak - bankroll > maxDrawdown) maxDrawdown = peak - bankroll
     if (bankroll <= 0) {
-      return { endBankroll: 0, peak, busted: true, endedAhead: false }
+      return {
+        endBankroll: 0,
+        peak,
+        busted: true,
+        endedAhead: false,
+        maxDrawdown,
+        worstLossStreakCost,
+      }
     }
   }
   return {
@@ -145,6 +183,8 @@ function playSession(
     peak,
     busted: false,
     endedAhead: bankroll > startBankroll,
+    maxDrawdown,
+    worstLossStreakCost,
   }
 }
 
@@ -175,6 +215,7 @@ function run() {
     paroli(3),
     sequence('1-3-2-6', [1, 3, 2, 6]),
     sequence('1-3-2-4', [1, 3, 2, 4]),
+    martingale(), // cautionary contrast — what NOT to do in a loss streak
   ]
 
   console.log('═'.repeat(74))
@@ -189,7 +230,7 @@ function run() {
   )
   console.log('─'.repeat(74))
   console.log(
-    '  Strategy      AvgEnd     Median    EndedAhead   BustRate   BestRun   WorstRun',
+    '  Strategy      AvgEnd  EndedAhead  BustRate  AvgDrawdwn  TypicalLossRun  WorstRun',
   )
   console.log('─'.repeat(74))
 
@@ -199,46 +240,53 @@ function run() {
     let sumEnd = 0
     let ahead = 0
     let busts = 0
-    let best = -Infinity
     let worst = Infinity
-    const ends: number[] = []
+    let sumDrawdown = 0
+    const lossRuns: number[] = []
 
     for (let s = 0; s < SESSIONS; s++) {
       const res = playSession(strat, rng, HANDS, BANKROLL_UNITS)
       const net = res.endBankroll - BANKROLL_UNITS
       sumEnd += net
-      ends.push(net)
       if (res.endedAhead) ahead++
       if (res.busted) busts++
-      if (net > best) best = net
       if (net < worst) worst = net
+      sumDrawdown += res.maxDrawdown
+      lossRuns.push(res.worstLossStreakCost)
     }
 
-    ends.sort((a, b) => a - b)
-    const median = ends[Math.floor(ends.length / 2)]
+    // 95th-percentile worst loss run = the "bad streak" you should plan for.
+    lossRuns.sort((a, b) => a - b)
+    const p95LossRun = lossRuns[Math.floor(lossRuns.length * 0.95)]
     const avg = sumEnd / SESSIONS
+    const avgDD = sumDrawdown / SESSIONS
 
     console.log(
       '  ' +
         strat.name.padEnd(13) +
-        money(avg).padStart(8) +
-        money(median).padStart(11) +
-        pct(ahead / SESSIONS).padStart(12) +
-        pct(busts / SESSIONS).padStart(11) +
-        money(best).padStart(11) +
-        money(worst).padStart(11),
+        money(avg).padStart(7) +
+        pct(ahead / SESSIONS).padStart(11) +
+        pct(busts / SESSIONS).padStart(10) +
+        ('-$' + (avgDD * UNIT).toFixed(0)).padStart(12) +
+        ('-$' + (p95LossRun * UNIT).toFixed(0)).padStart(16) +
+        money(worst).padStart(10),
     )
   }
 
   console.log('─'.repeat(74))
-  console.log('  AvgEnd  = average net result per session (the house edge shows here)')
-  console.log('  EndedAhead = % of sessions you walked away with a profit')
-  console.log('  BustRate   = % of sessions you lost the entire bankroll')
+  console.log('  AvgDrawdwn     = avg deepest peak-to-trough drop within a session')
+  console.log('  TypicalLossRun = 95th-pctile $ lost in one uninterrupted loss streak')
+  console.log('  WorstRun       = worst single session out of all sessions')
   console.log('═'.repeat(74))
   console.log(
-    '\n  Takeaway: AvgEnd is negative for ALL systems — no progression beats the\n' +
-      '  edge. But 1-3-2-6 trades a higher "EndedAhead" feel for bigger swings.\n' +
-      '  Lower bust risk + more winning sessions = bet smaller units vs bankroll.',
+    '\n  ANSWER — minimizing loss-streak damage while still progressing:\n' +
+      '  All four positive systems reset to 1 unit after every loss, so a cold\n' +
+      '  streak only ever costs you base units — look at their tiny TypicalLossRun.\n' +
+      '  Martingale does the opposite: it DOUBLES into the streak (huge loss run +\n' +
+      "  bust risk). That's the trap to avoid.\n\n" +
+      '  Best balance: 1-3-2-4 (or Paroli). Same loss-streak protection as 1-3-2-6\n' +
+      '  but it banks profit one step earlier, so drawdowns are shallower while you\n' +
+      '  still ride winning streaks up.',
   )
 }
 
