@@ -446,8 +446,92 @@ function runGoal() {
   )
 }
 
-// Goal mode if --goal is passed; otherwise the per-session backtest.
-if (process.argv.some((a) => a.startsWith('--goal='))) {
+// ════════════════════════════════════════════════════════════════════════
+//  GRIND MODE — "small bets, play every day, try to grow steadily"
+//  Run:  npx tsx scripts/baccarat-sim.ts --days=365 --start=20000 --unit=25
+//  Each day = one session of small bets; bankroll carries to the next day.
+//  Shows what happens to the SAME players over a month / quarter / year.
+// ════════════════════════════════════════════════════════════════════════
+function runGrind() {
+  const days = arg('days', 365)
+  const startDollars = arg('start', 20000)
+  const handsPerDay = arg('hands', 50)
+  const players = arg('sessions', 50000)
+  const startUnits = startDollars / UNIT
+
+  const milestones = [30, 90, 180, days].filter((d, i, a) => d <= days && a.indexOf(d) === i)
+
+  console.log('═'.repeat(74))
+  console.log('  BACCARAT DAILY GRIND — small flat bets, every day, bankroll carries over')
+  console.log('═'.repeat(74))
+  console.log(
+    `  Start: $${startDollars.toLocaleString()}   Unit: $${UNIT} (${(
+      (UNIT / startDollars) *
+      100
+    ).toFixed(2)}% of bankroll)   Hands/day: ${handsPerDay}`,
+  )
+  console.log(`  Players simulated: ${players.toLocaleString()}   Strategy: Flat Banker`)
+  console.log('─'.repeat(74))
+  console.log('  After…       MedianBankroll   StillUp%   Down>20%   Wiped out')
+  console.log('─'.repeat(74))
+
+  // Snapshot every player's bankroll at each milestone.
+  const snapshots: Record<number, number[]> = {}
+  for (const m of milestones) snapshots[m] = []
+
+  const strat = flat()
+  for (let p = 0; p < players; p++) {
+    const rng = makeRng((0xc0ffee + p * 2654435761) >>> 0) // distinct stream per player
+    let bankroll = startUnits
+    let day = 0
+    for (const m of milestones) {
+      while (day < m && bankroll > 0) {
+        const res = playSession(strat, rng, handsPerDay, bankroll)
+        bankroll = res.endBankroll
+        day++
+      }
+      snapshots[m].push(bankroll)
+    }
+  }
+
+  for (const m of milestones) {
+    const ends = snapshots[m].slice().sort((a, b) => a - b)
+    const median = ends[Math.floor(ends.length / 2)] * UNIT
+    const up = ends.filter((b) => b > startUnits).length / ends.length
+    const downBad = ends.filter((b) => b < startUnits * 0.8).length / ends.length
+    const wiped = ends.filter((b) => b <= 0).length / ends.length
+    const label = m === days ? `${m}d (goal)` : `${m} days`
+    console.log(
+      '  ' +
+        label.padEnd(13) +
+        ('$' + Math.round(median).toLocaleString()).padStart(13) +
+        ((up * 100).toFixed(1) + '%').padStart(11) +
+        ((downBad * 100).toFixed(1) + '%').padStart(11) +
+        ((wiped * 100).toFixed(1) + '%').padStart(12),
+    )
+  }
+
+  console.log('─'.repeat(74))
+  console.log('  StillUp% = players whose bankroll is above where they started')
+  console.log('  Down>20% = players who have lost more than a fifth of their money')
+  console.log('═'.repeat(74))
+  console.log(
+    '\n  THE HARD TRUTH about "small bets, never lose, grow every day":\n' +
+      '  It is mathematically impossible in baccarat. Small bets = MORE hands, and\n' +
+      '  every hand pays the house its ~1.06% edge. The more you play, the more\n' +
+      '  certain you are to be DOWN — watch StillUp% fall as the days add up.\n\n' +
+      '  "Progress every day" requires a positive expectation. Baccarat has a\n' +
+      '  NEGATIVE one. No bet size, no progression, no streak-reading changes that.\n' +
+      '  The only days you reliably grow money are days you do NOT play.\n\n' +
+      '  If your real goal is to grow $20k steadily, that is an INVESTING question,\n' +
+      "  not a gambling one — and it's exactly what this repo's tooling is built for.",
+  )
+}
+
+// Mode select: --days = daily grind, --goal = reach a target, else session backtest.
+if (process.argv.some((a) => a.startsWith('--days='))) {
+  runGrind()
+} else if (process.argv.some((a) => a.startsWith('--goal='))) {
   runGoal()
 } else {
   run()
